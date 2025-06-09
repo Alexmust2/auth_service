@@ -7,11 +7,12 @@ import (
 
 type User struct {
 	gorm.Model
-	Username    string `gorm:"unique"`
+	Username    string
 	Password    string
 	Email       string `gorm:"unique"`
-	googleToken string
-	githubToken string
+	Avatar_url  string
+	GoogleToken string
+	GithubToken string
 }
 
 func (u *User) BeforeSave(tx *gorm.DB) error {

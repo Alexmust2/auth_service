@@ -3,14 +3,17 @@ package routes
 import (
 	"auth.alexmust/internal/handlers"
 	"github.com/gofiber/fiber/v2"
+	"gorm.io/gorm"
 )
 
-func IndexRoute(app *fiber.App, db interface{}) {
+func IndexRoute(app *fiber.App, db *gorm.DB) {
 	app.Get("/login/google", handlers.GoogleLogin)
-	app.Get("/callback/google", handlers.GoogleCallback)
+	app.Get("/callback/google", func(c *fiber.Ctx) error {
+		return handlers.GoogleCallback(c, db)
+	})
 	app.Get("/login/github", handlers.GitHubLogin)
-	app.Get("/callback/github", handlers.GitHubCallback)
+	app.Get("/callback/github", func(c *fiber.Ctx) error {
+		return handlers.GitHubCallback(c, db)
+	})
 
-	app.Post("/register", handlers.Register)
-	app.Post("/login", handlers.Login)
 }

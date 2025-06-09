@@ -5,10 +5,12 @@ import (
 	"encoding/json"
 	"io/ioutil"
 
+	"auth.alexmust/internal/models"
 	"auth.alexmust/internal/oauth"
 	"github.com/gofiber/fiber/v2"
 	"github.com/joho/godotenv"
 	"golang.org/x/oauth2"
+	"gorm.io/gorm"
 )
 
 var (
@@ -26,7 +28,7 @@ func GitHubLogin(c *fiber.Ctx) error {
 	return c.Redirect(url)
 }
 
-func GitHubCallback(c *fiber.Ctx) error {
+func GitHubCallback(c *fiber.Ctx, db *gorm.DB) error {
 	if c.Query("state") != "github-state" {
 		return c.Status(fiber.StatusBadRequest).SendString("Invalid state")
 	}
@@ -73,6 +75,28 @@ func GitHubCallback(c *fiber.Ctx) error {
 
 	accessToken, _ := GenerateJWT(email)
 	refreshToken, _ := GenerateRefreshToken(email)
+
+	user := &models.User{
+		Username:    userData["name"].(string),
+		Email:       email,
+		GithubToken: token.AccessToken,
+	}
+
+	// Проверяем, существует ли пользователь
+	var existingUser models.User
+	if err := db.Where("email = ?", email).First(&existingUser).Error; err == nil {
+		// Обновляем существующего пользователя
+		existingUser.GoogleToken = token.AccessToken
+		existingUser.Avatar_url = userData["avatar_url"].(string)
+		if err := db.Save(&existingUser).Error; err != nil {
+			return c.Status(fiber.StatusInternalServerError).SendString("Failed to update user: " + err.Error())
+		}
+		user = &existingUser
+	} else {
+		if err := db.Create(user).Error; err != nil {
+			return c.Status(fiber.StatusInternalServerError).SendString("Failed to create user: " + err.Error())
+		}
+	}
 
 	return c.JSON(fiber.Map{
 		"access_token":  accessToken,

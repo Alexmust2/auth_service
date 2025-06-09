@@ -9,6 +9,9 @@ import (
 	"github.com/gofiber/fiber/v2"
 	"github.com/joho/godotenv"
 	"golang.org/x/oauth2"
+	"gorm.io/gorm"
+
+	"auth.alexmust/internal/models"
 )
 
 var (
@@ -26,7 +29,7 @@ func GoogleLogin(c *fiber.Ctx) error {
 	return c.Redirect(url, fiber.StatusTemporaryRedirect)
 }
 
-func GoogleCallback(c *fiber.Ctx) error {
+func GoogleCallback(c *fiber.Ctx, db *gorm.DB) error {
 	if c.Query("state") != "random-state-string" {
 		return c.Status(fiber.StatusBadRequest).SendString("Invalid state parameter")
 	}
@@ -65,9 +68,33 @@ func GoogleCallback(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusInternalServerError).SendString("Refresh token generation failed")
 	}
 
+	user := &models.User{
+		Username:    userInfo["name"].(string),
+		Email:       email,
+		GoogleToken: token.AccessToken,
+	}
+
+	// Проверяем, существует ли пользователь
+	var existingUser models.User
+	if err := db.Where("email = ?", email).First(&existingUser).Error; err == nil {
+		// Обновляем существующего пользователя
+		existingUser.GoogleToken = token.AccessToken
+		existingUser.Avatar_url = userInfo["picture"].(string)
+		if err := db.Save(&existingUser).Error; err != nil {
+			return c.Status(fiber.StatusInternalServerError).SendString("Failed to update user: " + err.Error())
+		}
+		user = &existingUser
+	} else {
+		// Создаем нового пользователя
+		if err := db.Create(user).Error; err != nil {
+			return c.Status(fiber.StatusInternalServerError).SendString("Failed to create user: " + err.Error())
+		}
+	}
+
 	return c.JSON(fiber.Map{
 		"access_token":  accessToken,
 		"refresh_token": refreshToken,
 		"user":          userInfo,
+		"db-user":       user,
 	})
 }
