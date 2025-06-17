@@ -12,7 +12,7 @@ func GoogleConfig() *oauth2.Config {
 	return &oauth2.Config{
 		ClientID:     os.Getenv("GOOGLE_CLIENT_ID"),
 		ClientSecret: os.Getenv("GOOGLE_CLIENT_SECRET"),
-		RedirectURL:  "http://localhost:3000/callback/google",
+		RedirectURL:  "http://localhost:3000/api/v1/callback/google",
 		Scopes: []string{
 			"https://www.googleapis.com/auth/userinfo.email",
 			"https://www.googleapis.com/auth/userinfo.profile",
@@ -25,11 +25,9 @@ func GitHubConfig() *oauth2.Config {
 	return &oauth2.Config{
 		ClientID:     os.Getenv("GITHUB_CLIENT_ID"),
 		ClientSecret: os.Getenv("GITHUB_CLIENT_SECRET"),
-		RedirectURL:  "http://localhost:3000/callback/github",
+		RedirectURL:  "http://localhost:3000/api/v1/callback/github",
 		Scopes: []string{
 			"user:email",
-			"user:avatar_url",
-			"user:name",
 		},
 		Endpoint: github.Endpoint,
 	}
